@@ -1,0 +1,729 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Use o Komodo editor de Texto para tirar do papel suas ideias!">
+    <title>Komodo Editor de Texto Online</title>
+    <style>
+        :root {
+            --primary: #4361ee;
+            --secondary: #3f37c9;
+            --dark: #212529;
+            --light: #f8f9fa;
+            --gray: #6c757d;
+            --success: #4cc9f0;
+            --warning: #f8961e;
+            --danger: #f94144;
+            --font-main: 'Inter', system-ui, -apple-system, sans-serif;
+            --font-mono: 'SF Mono', 'Roboto Mono', monospace;
+            --shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            --radius: 8px;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: var(--font-main);
+            background-color: #f5f7ff;
+            color: var(--dark);
+            line-height: 1.6;
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        .editor-container {
+            display: grid;
+            grid-template-rows: auto 1fr auto;
+            max-width: 900px;
+            margin: 0 auto;
+            height: 80vh;
+            background: white;
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            overflow: hidden;
+        }
+
+        .toolbar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            padding: 12px 16px;
+            background: white;
+            border-bottom: 1px solid #e9ecef;
+            align-items: center;
+        }
+
+        .toolbar button {
+            background: none;
+            border: none;
+            padding: 8px;
+            border-radius: 4px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--gray);
+            transition: all 0.2s ease;
+            min-width: 36px;
+            height: 36px;
+        }
+
+        .toolbar button:hover {
+            background: #f1f3ff;
+            color: var(--primary);
+        }
+
+        .toolbar button.active {
+            color: var(--primary);
+            background: #e9ecef;
+        }
+
+        .text-area {
+            padding: 20px;
+            font-size: 16px;
+            line-height: 1.6;
+            color: var(--dark);
+            resize: none;
+            border: none;
+            outline: none;
+            font-family: var(--font-main);
+            overflow-y: auto;
+            background: white;
+        }
+
+        .status-bar {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 16px;
+            background: white;
+            border-top: 1px solid #e9ecef;
+            color: var(--gray);
+            font-size: 14px;
+        }
+
+        .status-info {
+            display: flex;
+            gap: 16px;
+        }
+
+        .word-count {
+            font-feature-settings: "tnum";
+        }
+
+        .save-status {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .save-status .indicator {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: var(--gray);
+        }
+
+        .save-status .indicator.saved {
+            background-color: var(--success);
+        }
+
+        .save-status .indicator.unsaved {
+            background-color: var(--warning);
+        }
+
+        .theme-toggle {
+            background: none;
+            border: none;
+            color: var(--gray);
+            cursor: pointer;
+        }
+
+        /* Modo escuro */
+        .dark-mode {
+            background-color: #121212;
+        }
+
+        .dark-mode .editor-container {
+            background: #1e1e1e;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+        }
+
+        .dark-mode .toolbar,
+        .dark-mode .status-bar {
+            background: #1e1e1e;
+            border-color: #333;
+        }
+
+        .dark-mode .text-area {
+            background: #1e1e1e;
+            color: #e0e0e0;
+        }
+
+        .dark-mode .toolbar button:hover {
+            background: #333;
+        }
+
+        .dark-mode .toolbar button.active {
+            background: #333;
+            color: var(--success);
+        }
+
+        /* Modal de Emojis */
+        .emoji-modal {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            padding: 20px;
+            z-index: 1001;
+            width: 320px;
+            max-height: 400px;
+            overflow-y: auto;
+            display: none;
+        }
+
+        .dark-mode .emoji-modal {
+            background: #2d2d2d;
+        }
+
+        .emoji-modal h3 {
+            margin-bottom: 16px;
+            color: var(--dark);
+        }
+
+        .dark-mode .emoji-modal h3 {
+            color: white;
+        }
+
+        .emoji-grid {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 8px;
+        }
+
+        .emoji-btn {
+            font-size: 24px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 4px;
+            border-radius: 4px;
+        }
+
+        .emoji-btn:hover {
+            background: #f1f3ff;
+        }
+
+        .dark-mode .emoji-btn:hover {
+            background: #333;
+        }
+
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            display: none;
+        }
+
+        /* Responsividade */
+        @media (max-width: 768px) {
+            .toolbar {
+                gap: 6px;
+                padding: 8px 12px;
+            }
+            
+            .toolbar button {
+                padding: 6px;
+                min-width: 32px;
+                height: 32px;
+            }
+            
+            .editor-container {
+                height: 90vh;
+            }
+
+            .status-info {
+                gap: 8px;
+            }
+        }
+
+        /* Animações */
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .notification {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: var(--primary);
+            color: white;
+            padding: 12px 24px;
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            animation: fadeIn 0.3s ease;
+            display: none;
+            z-index: 1000;
+        }
+
+        .notification.success {
+            background: var(--success);
+        }
+
+        .notification.warning {
+            background: var(--warning);
+        }
+    </style>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="editor-container">
+        <div class="toolbar">
+            <!-- Estilos de texto -->
+            <button id="bold-btn" title="Negrito (Ctrl+B)">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M6 4h8a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"></path>
+                    <path d="M6 12h9a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"></path>
+                </svg>
+            </button>
+            <button id="italic-btn" title="Itálico (Ctrl+I)">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="19" y1="4" x2="10" y2="4"></line>
+                    <line x1="14" y1="20" x2="5" y2="20"></line>
+                    <line x1="15" y1="4" x2="9" y2="20"></line>
+                </svg>
+            </button>
+            <button id="underline-btn" title="Sublinhado (Ctrl+U)">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M6 3v7a6 6 0 0 0 6 6 6 6 0 0 0 6-6V3"></path>
+                    <line x1="4" y1="21" x2="20" y2="21"></line>
+                </svg>
+            </button>
+
+            <!-- Divisor visual -->
+            <div style="width:1px; height:24px; background:#e9ecef; margin:0 4px;"></div>
+
+            <!-- Alinhamento -->
+            <button id="align-left-btn" title="Alinhar à esquerda">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="17" y1="10" x2="3" y2="10"></line>
+                    <line x1="21" y1="6" x2="3" y2="6"></line>
+                    <line x1="21" y1="14" x2="3" y2="14"></line>
+                    <line x1="17" y1="18" x2="3" y2="18"></line>
+                </svg>
+            </button>
+            <button id="align-center-btn" title="Centralizar">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="18" y1="10" x2="6" y2="10"></line>
+                    <line x1="21" y1="6" x2="3" y2="6"></line>
+                    <line x1="21" y1="14" x2="3" y2="14"></line>
+                    <line x1="18" y1="18" x2="6" y2="18"></line>
+                </svg>
+            </button>
+            <button id="align-right-btn" title="Alinhar à direita">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="21" y1="10" x2="7" y2="10"></line>
+                    <line x1="21" y1="6" x2="3" y2="6"></line>
+                    <line x1="21" y1="14" x2="3" y2="14"></line>
+                    <line x1="21" y1="18" x2="7" y2="18"></line>
+                </svg>
+            </button>
+
+            <!-- Divisor visual -->
+            <div style="width:1px; height:24px; background:#e9ecef; margin:0 4px;"></div>
+
+            <!-- Emojis e ações -->
+            <button id="emoji-btn" title="Inserir emoji (Ctrl+E)">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <path d="M8 14s1.5 2 4 2 4-2 4-2"></path>
+                    <line x1="9" y1="9" x2="9.01" y2="9"></line>
+                    <line x1="15" y1="9" x2="15.01" y2="9"></line>
+                </svg>
+            </button>
+            <button id="copy-btn" title="Copiar (Ctrl+C)">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                </svg>
+            </button>
+            <button id="paste-btn" title="Colar (Ctrl+V)">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
+                    <rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect>
+                </svg>
+            </button>
+            <button id="clear-btn" title="Limpar texto">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M3 6h18"></path>
+                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                </svg>
+            </button>
+        </div>
+        
+        <div id="editable-content" class="text-area" contenteditable="true" placeholder="Comece a digitar aqui..."></div>
+        
+        <div class="status-bar">
+            <div class="status-info">
+                <div class="word-count">0 palavras</div>
+                <div class="save-status">
+                    <span class="indicator"></span>
+                    <span class="status-text">Salvando...</span>
+                </div>
+            </div>
+            <button class="theme-toggle" id="theme-toggle">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="5"></circle>
+                    <line x1="12" y1="1" x2="12" y2="3"></line>
+                    <line x1="12" y1="21" x2="12" y2="23"></line>
+                    <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                    <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                    <line x1="1" y1="12" x2="3" y2="12"></line>
+                    <line x1="21" y1="12" x2="23" y2="12"></line>
+                    <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                    <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                </svg>
+            </button>
+        </div>
+    </div>
+    
+    <!-- Modal de Emojis -->
+    <div class="modal-overlay" id="emoji-overlay"></div>
+    <div class="emoji-modal" id="emoji-modal">
+        <h3>Selecione um emoji</h3>
+        <div class="emoji-grid" id="emoji-grid">
+            <!-- Emojis serão inseridos via JavaScript -->
+        </div>
+    </div>
+    
+    <div class="notification" id="notification">Texto copiado!</div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const editableContent = document.getElementById('editable-content');
+            const boldBtn = document.getElementById('bold-btn');
+            const italicBtn = document.getElementById('italic-btn');
+            const underlineBtn = document.getElementById('underline-btn');
+            const alignLeftBtn = document.getElementById('align-left-btn');
+            const alignCenterBtn = document.getElementById('align-center-btn');
+            const alignRightBtn = document.getElementById('align-right-btn');
+            const emojiBtn = document.getElementById('emoji-btn');
+            const copyBtn = document.getElementById('copy-btn');
+            const pasteBtn = document.getElementById('paste-btn');
+            const clearBtn = document.getElementById('clear-btn');
+            const themeToggle = document.getElementById('theme-toggle');
+            const wordCount = document.querySelector('.word-count');
+            const saveStatus = document.querySelector('.save-status .status-text');
+            const saveIndicator = document.querySelector('.save-status .indicator');
+            const notification = document.getElementById('notification');
+            const emojiModal = document.getElementById('emoji-modal');
+            const emojiOverlay = document.getElementById('emoji-overlay');
+            const emojiGrid = document.getElementById('emoji-grid');
+            
+            // Configurações de armazenamento
+            const STORAGE_KEY = 'modernTextEditorContent';
+            const THEME_KEY = 'modernTextEditorDarkMode';
+            let saveTimeout = null;
+            let isContentChanged = false;
+            
+            // Lista de emojis populares
+            const emojis = [
+                '😀', '😃', '😄', '😁', '😆', '😅', '😂', '🤣', '😊', '😇',
+                '🙂', '🙃', '😉', '😌', '😍', '🥰', '😘', '😗', '😙', '😚',
+                '😋', '😛', '😝', '😜', '🤪', '🤨', '🧐', '🤓', '😎', '🤩',
+                '🥳', '😏', '😒', '😞', '😔', '😟', '😕', '🙁', '☹️', '😣',
+                '😖', '😫', '😩', '🥺', '😢', '😭', '😤', '😠', '😡', '🤬',
+                '🤯', '😳', '🥵', '🥶', '😱', '😨', '😰', '😥', '😓', '🤗',
+                '🤔', '🤭', '🤫', '🤥', '😶', '😐', '😑', '😬', '🙄', '😯',
+                '😦', '😧', '😮', '😲', '🥱', '😴', '🤤', '😪', '😵', '🤐',
+                '🥴', '🤢', '🤮', '🤧', '😷', '🤒', '🤕', '🤑', '🤠', '😈',
+                '👿', '👹', '👺', '🤡', '💩', '👻', '💀', '☠️', '👽', '👾',
+                '🤖', '🎃', '😺', '😸', '😹', '😻', '😼', '😽', '🙀', '😿',
+                '😾', '👋', '🤚', '🖐️', '✋', '🖖', '👌', '🤏', '✌️', '🤞',
+                '🤟', '🤘', '🤙', '👈', '👉', '👆', '🖕', '👇', '☝️', '👍',
+                '👎', '✊', '👊', '🤛', '🤜', '👏', '🙌', '👐', '🤲', '🤝',
+                '🙏', '✍️', '💅', '🤳', '💪', '🦾', '🦿', '🦵', '🦶', '👂',
+                '🦻', '👃', '🧠', '🦷', '🦴', '👀', '👁️', '👅', '👄', '💋',
+                '❤️', '🧡', '💛', '💚', '💙', '💜', '🖤', '🤍', '🤎', '💔',
+                '❤️‍🔥', '❤️‍🩹', '💕', '💞', '💓', '💗', '💖', '💘', '💝', '💟'
+            ];
+            
+            // Carregar conteúdo salvo
+            const loadSavedContent = () => {
+                const savedContent = localStorage.getItem(STORAGE_KEY);
+                if (savedContent) {
+                    editableContent.innerHTML = savedContent;
+                    updateWordCount();
+                    showNotification('Conteúdo anterior recuperado', 'success');
+                }
+                
+                // Verificar último estado do tema
+                if (localStorage.getItem(THEME_KEY) === 'true') {
+                    document.body.classList.add('dark-mode');
+                }
+                
+                updateSaveStatus(true);
+            };
+            
+            // Salvar conteúdo
+            const saveContent = () => {
+                localStorage.setItem(STORAGE_KEY, editableContent.innerHTML);
+                updateSaveStatus(true);
+                isContentChanged = false;
+            };
+            
+            // Atualizar status de salvamento
+            const updateSaveStatus = (saved) => {
+                if (saved) {
+                    saveIndicator.classList.add('saved');
+                    saveIndicator.classList.remove('unsaved');
+                    saveStatus.textContent = 'Salvo';
+                } else {
+                    saveIndicator.classList.add('unsaved');
+                    saveIndicator.classList.remove('saved');
+                    saveStatus.textContent = 'Não salvo';
+                }
+            };
+            
+            // Atualizar contagem de palavras
+            const updateWordCount = () => {
+                const text = editableContent.innerText.trim();
+                const count = text ? text.split(/\s+/).length : 0;
+                wordCount.textContent = `${count} ${count === 1 ? 'palavra' : 'palavras'}`;
+            };
+            
+            // Mostrar notificação
+            const showNotification = (message, type = '') => {
+                notification.textContent = message;
+                notification.className = 'notification';
+                if (type) notification.classList.add(type);
+                
+                notification.style.display = 'block';
+                setTimeout(() => {
+                    notification.style.display = 'none';
+                }, 2000);
+            };
+            
+            // Inicializar emojis
+            const initEmojis = () => {
+                emojis.forEach(emoji => {
+                    const button = document.createElement('button');
+                    button.className = 'emoji-btn';
+                    button.textContent = emoji;
+                    button.addEventListener('click', () => {
+                        insertAtCursor(emoji);
+                        closeEmojiModal();
+                    });
+                    emojiGrid.appendChild(button);
+                });
+            };
+            
+            // Inserir texto na posição do cursor
+            const insertAtCursor = (text) => {
+                const selection = window.getSelection();
+                if (selection.rangeCount > 0) {
+                    const range = selection.getRangeAt(0);
+                    range.deleteContents();
+                    range.insertNode(document.createTextNode(text));
+                    
+                    // Mover o cursor para depois do emoji inserido
+                    const newRange = document.createRange();
+                    newRange.setStartAfter(range.endContainer);
+                    newRange.collapse(true);
+                    selection.removeAllRanges();
+                    selection.addRange(newRange);
+                } else {
+                    editableContent.innerHTML += text;
+                }
+                
+                editableContent.focus();
+                isContentChanged = true;
+                updateSaveStatus(false);
+                updateWordCount();
+            };
+            
+            // Abrir modal de emojis
+            const openEmojiModal = () => {
+                emojiModal.style.display = 'block';
+                emojiOverlay.style.display = 'block';
+            };
+            
+            // Fechar modal de emojis
+            const closeEmojiModal = () => {
+                emojiModal.style.display = 'none';
+                emojiOverlay.style.display = 'none';
+            };
+            
+            // Evento de mudança no conteúdo editável
+            editableContent.addEventListener('input', () => {
+                updateWordCount();
+                isContentChanged = true;
+                updateSaveStatus(false);
+                
+                // Debounce para salvar após 1 segundo sem digitação
+                clearTimeout(saveTimeout);
+                saveTimeout = setTimeout(saveContent, 1000);
+            });
+            
+            // Formatação de texto
+            boldBtn.addEventListener('click', () => {
+                document.execCommand('bold', false, null);
+                boldBtn.classList.toggle('active');
+            });
+            
+            italicBtn.addEventListener('click', () => {
+                document.execCommand('italic', false, null);
+                italicBtn.classList.toggle('active');
+            });
+            
+            underlineBtn.addEventListener('click', () => {
+                document.execCommand('underline', false, null);
+                underlineBtn.classList.toggle('active');
+            });
+            
+            // Alinhamento de texto
+            alignLeftBtn.addEventListener('click', () => {
+                document.execCommand('justifyLeft', false, null);
+                alignLeftBtn.classList.add('active');
+                alignCenterBtn.classList.remove('active');
+                alignRightBtn.classList.remove('active');
+            });
+            
+            alignCenterBtn.addEventListener('click', () => {
+                document.execCommand('justifyCenter', false, null);
+                alignLeftBtn.classList.remove('active');
+                alignCenterBtn.classList.add('active');
+                alignRightBtn.classList.remove('active');
+            });
+            
+            alignRightBtn.addEventListener('click', () => {
+                document.execCommand('justifyRight', false, null);
+                alignLeftBtn.classList.remove('active');
+                alignCenterBtn.classList.remove('active');
+                alignRightBtn.classList.add('active');
+            });
+            
+            // Emojis
+            emojiBtn.addEventListener('click', openEmojiModal);
+            emojiOverlay.addEventListener('click', closeEmojiModal);
+            
+            // Copiar
+            copyBtn.addEventListener('click', () => {
+                const range = document.createRange();
+                range.selectNode(editableContent);
+                window.getSelection().removeAllRanges();
+                window.getSelection().addRange(range);
+                document.execCommand('copy');
+                showNotification('Texto copiado!', 'success');
+            });
+            
+            // Colar
+            pasteBtn.addEventListener('click', async () => {
+                editableContent.focus();
+                try {
+                    const text = await navigator.clipboard.readText();
+                    document.execCommand('insertText', false, text);
+                    showNotification('Texto colado!', 'success');
+                } catch (err) {
+                    // Fallback para o método antigo se o Clipboard API não estiver disponível
+                    document.execCommand('paste');
+                    showNotification('Texto colado!', 'success');
+                }
+            });
+            
+            // Limpar
+            clearBtn.addEventListener('click', () => {
+                if (editableContent.innerHTML && confirm('Deseja realmente limpar todo o texto?')) {
+                    editableContent.innerHTML = '';
+                    updateWordCount();
+                    saveContent();
+                    showNotification('Texto limpo!', 'warning');
+                }
+            });
+            
+            // Atalhos de teclado
+            editableContent.addEventListener('keydown', (e) => {
+                // Ctrl+B para negrito
+                if (e.ctrlKey && e.key === 'b') {
+                    e.preventDefault();
+                    boldBtn.click();
+                }
+                
+                // Ctrl+I para itálico
+                if (e.ctrlKey && e.key === 'i') {
+                    e.preventDefault();
+                    italicBtn.click();
+                }
+                
+                // Ctrl+U para sublinhado
+                if (e.ctrlKey && e.key === 'u') {
+                    e.preventDefault();
+                    underlineBtn.click();
+                }
+                
+                // Ctrl+C para copiar
+                if (e.ctrlKey && e.key === 'c') {
+                    e.preventDefault();
+                    copyBtn.click();
+                }
+                
+                // Ctrl+V para colar
+                if (e.ctrlKey && e.key === 'v') {
+                    e.preventDefault();
+                    pasteBtn.click();
+                }
+                
+                // Ctrl+S para salvar manualmente
+                if (e.ctrlKey && e.key === 's') {
+                    e.preventDefault();
+                    saveContent();
+                    showNotification('Texto salvo!', 'success');
+                }
+                
+                // Ctrl+E para emojis
+                if (e.ctrlKey && e.key === 'e') {
+                    e.preventDefault();
+                    openEmojiModal();
+                }
+            });
+            
+            // Alternar tema claro/escuro
+            themeToggle.addEventListener('click', () => {
+                document.body.classList.toggle('dark-mode');
+                
+                // Salvar preferência no localStorage
+                const isDark = document.body.classList.contains('dark-mode');
+                localStorage.setItem(THEME_KEY, isDark);
+            });
+            
+            // Salvar conteúdo antes de sair da página (se houver mudanças)
+            window.addEventListener('beforeunload', (e) => {
+                if (isContentChanged) {
+                    saveContent();
+                    // Alguns navegadores exigem que o evento seja tratado desta forma
+                    e.preventDefault();
+                    e.returnValue = '';
+                }
+            });
+            
+            // Inicializar
+            loadSavedContent();
+            initEmojis();
+            editableContent.focus();
+        });
+    </script>
+</body>
+</html>
