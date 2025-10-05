@@ -411,319 +411,349 @@
     
     <div class="notification" id="notification">Texto copiado!</div>
 
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            const editableContent = document.getElementById('editable-content');
-            const boldBtn = document.getElementById('bold-btn');
-            const italicBtn = document.getElementById('italic-btn');
-            const underlineBtn = document.getElementById('underline-btn');
-            const alignLeftBtn = document.getElementById('align-left-btn');
-            const alignCenterBtn = document.getElementById('align-center-btn');
-            const alignRightBtn = document.getElementById('align-right-btn');
-            const emojiBtn = document.getElementById('emoji-btn');
-            const copyBtn = document.getElementById('copy-btn');
-            const pasteBtn = document.getElementById('paste-btn');
-            const clearBtn = document.getElementById('clear-btn');
-            const themeToggle = document.getElementById('theme-toggle');
-            const wordCount = document.querySelector('.word-count');
-            const saveStatus = document.querySelector('.save-status .status-text');
-            const saveIndicator = document.querySelector('.save-status .indicator');
-            const notification = document.getElementById('notification');
-            const emojiModal = document.getElementById('emoji-modal');
-            const emojiOverlay = document.getElementById('emoji-overlay');
-            const emojiGrid = document.getElementById('emoji-grid');
-            
-            // Configurações de armazenamento
-            const STORAGE_KEY = 'modernTextEditorContent';
-            const THEME_KEY = 'modernTextEditorDarkMode';
-            let saveTimeout = null;
-            let isContentChanged = false;
-            
-            // Lista de emojis populares
-            const emojis = [
-                '😀', '😃', '😄', '😁', '😆', '😅', '😂', '🤣', '😊', '😇',
-                '🙂', '🙃', '😉', '😌', '😍', '🥰', '😘', '😗', '😙', '😚',
-                '😋', '😛', '😝', '😜', '🤪', '🤨', '🧐', '🤓', '😎', '🤩',
-                '🥳', '😏', '😒', '😞', '😔', '😟', '😕', '🙁', '☹️', '😣',
-                '😖', '😫', '😩', '🥺', '😢', '😭', '😤', '😠', '😡', '🤬',
-                '🤯', '😳', '🥵', '🥶', '😱', '😨', '😰', '😥', '😓', '🤗',
-                '🤔', '🤭', '🤫', '🤥', '😶', '😐', '😑', '😬', '🙄', '😯',
-                '😦', '😧', '😮', '😲', '🥱', '😴', '🤤', '😪', '😵', '🤐',
-                '🥴', '🤢', '🤮', '🤧', '😷', '🤒', '🤕', '🤑', '🤠', '😈',
-                '👿', '👹', '👺', '🤡', '💩', '👻', '💀', '☠️', '👽', '👾',
-                '🤖', '🎃', '😺', '😸', '😹', '😻', '😼', '😽', '🙀', '😿',
-                '😾', '👋', '🤚', '🖐️', '✋', '🖖', '👌', '🤏', '✌️', '🤞',
-                '🤟', '🤘', '🤙', '👈', '👉', '👆', '🖕', '👇', '☝️', '👍',
-                '👎', '✊', '👊', '🤛', '🤜', '👏', '🙌', '👐', '🤲', '🤝',
-                '🙏', '✍️', '💅', '🤳', '💪', '🦾', '🦿', '🦵', '🦶', '👂',
-                '🦻', '👃', '🧠', '🦷', '🦴', '👀', '👁️', '👅', '👄', '💋',
-                '❤️', '🧡', '💛', '💚', '💙', '💜', '🖤', '🤍', '🤎', '💔',
-                '❤️‍🔥', '❤️‍🩹', '💕', '💞', '💓', '💗', '💖', '💘', '💝', '💟'
-            ];
-            
-            // Carregar conteúdo salvo
-            const loadSavedContent = () => {
-                const savedContent = localStorage.getItem(STORAGE_KEY);
-                if (savedContent) {
-                    editableContent.innerHTML = savedContent;
-                    updateWordCount();
-                    showNotification('Conteúdo anterior recuperado', 'success');
-                }
-                
-                // Verificar último estado do tema
-                if (localStorage.getItem(THEME_KEY) === 'true') {
-                    document.body.classList.add('dark-mode');
-                }
-                
-                updateSaveStatus(true);
-            };
-            
-            // Salvar conteúdo
-            const saveContent = () => {
-                localStorage.setItem(STORAGE_KEY, editableContent.innerHTML);
-                updateSaveStatus(true);
-                isContentChanged = false;
-            };
-            
-            // Atualizar status de salvamento
-            const updateSaveStatus = (saved) => {
-                if (saved) {
-                    saveIndicator.classList.add('saved');
-                    saveIndicator.classList.remove('unsaved');
-                    saveStatus.textContent = 'Salvo';
-                } else {
-                    saveIndicator.classList.add('unsaved');
-                    saveIndicator.classList.remove('saved');
-                    saveStatus.textContent = 'Não salvo';
-                }
-            };
-            
-            // Atualizar contagem de palavras
-            const updateWordCount = () => {
-                const text = editableContent.innerText.trim();
-                const count = text ? text.split(/\s+/).length : 0;
-                wordCount.textContent = `${count} ${count === 1 ? 'palavra' : 'palavras'}`;
-            };
-            
-            // Mostrar notificação
-            const showNotification = (message, type = '') => {
-                notification.textContent = message;
-                notification.className = 'notification';
-                if (type) notification.classList.add(type);
-                
-                notification.style.display = 'block';
-                setTimeout(() => {
-                    notification.style.display = 'none';
-                }, 2000);
-            };
-            
-            // Inicializar emojis
-            const initEmojis = () => {
-                emojis.forEach(emoji => {
-                    const button = document.createElement('button');
-                    button.className = 'emoji-btn';
-                    button.textContent = emoji;
-                    button.addEventListener('click', () => {
-                        insertAtCursor(emoji);
-                        closeEmojiModal();
-                    });
-                    emojiGrid.appendChild(button);
-                });
-            };
-            
-            // Inserir texto na posição do cursor
-            const insertAtCursor = (text) => {
-                const selection = window.getSelection();
-                if (selection.rangeCount > 0) {
-                    const range = selection.getRangeAt(0);
-                    range.deleteContents();
-                    range.insertNode(document.createTextNode(text));
-                    
-                    // Mover o cursor para depois do emoji inserido
-                    const newRange = document.createRange();
-                    newRange.setStartAfter(range.endContainer);
-                    newRange.collapse(true);
-                    selection.removeAllRanges();
-                    selection.addRange(newRange);
-                } else {
-                    editableContent.innerHTML += text;
-                }
-                
-                editableContent.focus();
-                isContentChanged = true;
-                updateSaveStatus(false);
-                updateWordCount();
-            };
-            
-            // Abrir modal de emojis
-            const openEmojiModal = () => {
-                emojiModal.style.display = 'block';
-                emojiOverlay.style.display = 'block';
-            };
-            
-            // Fechar modal de emojis
-            const closeEmojiModal = () => {
-                emojiModal.style.display = 'none';
-                emojiOverlay.style.display = 'none';
-            };
-            
-            // Evento de mudança no conteúdo editável
-            editableContent.addEventListener('input', () => {
-                updateWordCount();
-                isContentChanged = true;
-                updateSaveStatus(false);
-                
-                // Debounce para salvar após 1 segundo sem digitação
-                clearTimeout(saveTimeout);
-                saveTimeout = setTimeout(saveContent, 1000);
+ <script>
+     
+     document.addEventListener('DOMContentLoaded', () => {
+    const editableContent = document.getElementById('editable-content');
+    const boldBtn = document.getElementById('bold-btn');
+    const italicBtn = document.getElementById('italic-btn');
+    const underlineBtn = document.getElementById('underline-btn');
+    const alignLeftBtn = document.getElementById('align-left-btn');
+    const alignCenterBtn = document.getElementById('align-center-btn');
+    const alignRightBtn = document.getElementById('align-right-btn');
+    const emojiBtn = document.getElementById('emoji-btn');
+    const copyBtn = document.getElementById('copy-btn');
+    const pasteBtn = document.getElementById('paste-btn');
+    const clearBtn = document.getElementById('clear-btn');
+    const themeToggle = document.getElementById('theme-toggle');
+    const wordCount = document.querySelector('.word-count');
+    const saveStatus = document.querySelector('.save-status .status-text');
+    const saveIndicator = document.querySelector('.save-status .indicator');
+    const notification = document.getElementById('notification');
+    const emojiModal = document.getElementById('emoji-modal');
+    const emojiOverlay = document.getElementById('emoji-overlay');
+    const emojiGrid = document.getElementById('emoji-grid');
+    
+    // Configurações de armazenamento
+    const STORAGE_KEY = 'modernTextEditorContent';
+    const THEME_KEY = 'modernTextEditorDarkMode';
+    let saveTimeout = null;
+    let isContentChanged = false;
+    
+    // Lista de emojis populares
+    const emojis = [
+        '😀', '😃', '😄', '😁', '😆', '😅', '😂', '🤣', '😊', '😇',
+        '🙂', '🙃', '😉', '😌', '😍', '🥰', '😘', '😗', '😙', '😚',
+        '😋', '😛', '😝', '😜', '🤪', '🤨', '🧐', '🤓', '😎', '🤩',
+        '🥳', '😏', '😒', '😞', '😔', '😟', '😕', '🙁', '☹️', '😣',
+        '😖', '😫', '😩', '🥺', '😢', '😭', '😤', '😠', '😡', '🤬',
+        '🤯', '😳', '🥵', '🥶', '😱', '😨', '😰', '😥', '😓', '🤗',
+        '🤔', '🤭', '🤫', '🤥', '😶', '😐', '😑', '😬', '🙄', '😯',
+        '😦', '😧', '😮', '😲', '🥱', '😴', '🤤', '😪', '😵', '🤐',
+        '🥴', '🤢', '🤮', '🤧', '😷', '🤒', '🤕', '🤑', '🤠', '😈',
+        '👿', '👹', '👺', '🤡', '💩', '👻', '💀', '☠️', '👽', '👾',
+        '🤖', '🎃', '😺', '😸', '😹', '😻', '😼', '😽', '🙀', '😿',
+        '😾', '👋', '🤚', '🖐️', '✋', '🖖', '👌', '🤏', '✌️', '🤞',
+        '🤟', '🤘', '🤙', '👈', '👉', '👆', '🖕', '👇', '☝️', '👍',
+        '👎', '✊', '👊', '🤛', '🤜', '👏', '🙌', '👐', '🤲', '🤝',
+        '🙏', '✍️', '💅', '🤳', '💪', '🦾', '🦿', '🦵', '🦶', '👂',
+        '🦻', '👃', '🧠', '🦷', '🦴', '👀', '👁️', '👅', '👄', '💋',
+        '❤️', '🧡', '💛', '💚', '💙', '💜', '🖤', '🤍', '🤎', '💔',
+        '❤️‍🔥', '❤️‍🩹', '💕', '💞', '💓', '💗', '💖', '💘', '💝', '💟'
+    ];
+    
+    // Carregar conteúdo salvo
+    const loadSavedContent = () => {
+        const savedContent = localStorage.getItem(STORAGE_KEY);
+        if (savedContent) {
+            editableContent.innerHTML = savedContent;
+            updateWordCount();
+            showNotification('Conteúdo anterior recuperado', 'success');
+        }
+        
+        // Verificar último estado do tema
+        if (localStorage.getItem(THEME_KEY) === 'true') {
+            document.body.classList.add('dark-mode');
+        }
+        
+        updateSaveStatus(true);
+    };
+    
+    // Salvar conteúdo
+    const saveContent = () => {
+        localStorage.setItem(STORAGE_KEY, editableContent.innerHTML);
+        updateSaveStatus(true);
+        isContentChanged = false;
+    };
+    
+    // Atualizar status de salvamento
+    const updateSaveStatus = (saved) => {
+        if (saved) {
+            saveIndicator.classList.add('saved');
+            saveIndicator.classList.remove('unsaved');
+            saveStatus.textContent = 'Salvo';
+        } else {
+            saveIndicator.classList.add('unsaved');
+            saveIndicator.classList.remove('saved');
+            saveStatus.textContent = 'Não salvo';
+        }
+    };
+    
+    // Atualizar contagem de palavras
+    const updateWordCount = () => {
+        const text = editableContent.innerText.trim();
+        const count = text ? text.split(/\s+/).length : 0;
+        wordCount.textContent = `${count} ${count === 1 ? 'palavra' : 'palavras'}`;
+    };
+    
+    // Mostrar notificação
+    const showNotification = (message, type = '') => {
+        notification.textContent = message;
+        notification.className = 'notification';
+        if (type) notification.classList.add(type);
+        
+        notification.style.display = 'block';
+        setTimeout(() => {
+            notification.style.display = 'none';
+        }, 2000);
+    };
+    
+    // Inicializar emojis
+    const initEmojis = () => {
+        emojis.forEach(emoji => {
+            const button = document.createElement('button');
+            button.className = 'emoji-btn';
+            button.textContent = emoji;
+            button.addEventListener('click', () => {
+                insertAtCursor(emoji);
+                closeEmojiModal();
             });
-            
-            // Formatação de texto
-            boldBtn.addEventListener('click', () => {
-                document.execCommand('bold', false, null);
-                boldBtn.classList.toggle('active');
-            });
-            
-            italicBtn.addEventListener('click', () => {
-                document.execCommand('italic', false, null);
-                italicBtn.classList.toggle('active');
-            });
-            
-            underlineBtn.addEventListener('click', () => {
-                document.execCommand('underline', false, null);
-                underlineBtn.classList.toggle('active');
-            });
-            
-            // Alinhamento de texto
-            alignLeftBtn.addEventListener('click', () => {
-                document.execCommand('justifyLeft', false, null);
-                alignLeftBtn.classList.add('active');
-                alignCenterBtn.classList.remove('active');
-                alignRightBtn.classList.remove('active');
-            });
-            
-            alignCenterBtn.addEventListener('click', () => {
-                document.execCommand('justifyCenter', false, null);
-                alignLeftBtn.classList.remove('active');
-                alignCenterBtn.classList.add('active');
-                alignRightBtn.classList.remove('active');
-            });
-            
-            alignRightBtn.addEventListener('click', () => {
-                document.execCommand('justifyRight', false, null);
-                alignLeftBtn.classList.remove('active');
-                alignCenterBtn.classList.remove('active');
-                alignRightBtn.classList.add('active');
-            });
-            
-            // Emojis
-            emojiBtn.addEventListener('click', openEmojiModal);
-            emojiOverlay.addEventListener('click', closeEmojiModal);
-            
-            // Copiar
-            copyBtn.addEventListener('click', () => {
-                const range = document.createRange();
-                range.selectNode(editableContent);
-                window.getSelection().removeAllRanges();
-                window.getSelection().addRange(range);
-                document.execCommand('copy');
-                showNotification('Texto copiado!', 'success');
-            });
-            
-            // Colar
-            pasteBtn.addEventListener('click', async () => {
-                editableContent.focus();
-                try {
-                    const text = await navigator.clipboard.readText();
-                    document.execCommand('insertText', false, text);
-                    showNotification('Texto colado!', 'success');
-                } catch (err) {
-                    // Fallback para o método antigo se o Clipboard API não estiver disponível
-                    document.execCommand('paste');
-                    showNotification('Texto colado!', 'success');
-                }
-            });
-            
-            // Limpar
-            clearBtn.addEventListener('click', () => {
-                if (editableContent.innerHTML && confirm('Deseja realmente limpar todo o texto?')) {
-                    editableContent.innerHTML = '';
-                    updateWordCount();
-                    saveContent();
-                    showNotification('Texto limpo!', 'warning');
-                }
-            });
-            
-            // Atalhos de teclado
-            editableContent.addEventListener('keydown', (e) => {
-                // Ctrl+B para negrito
-                if (e.ctrlKey && e.key === 'b') {
-                    e.preventDefault();
-                    boldBtn.click();
-                }
-                
-                // Ctrl+I para itálico
-                if (e.ctrlKey && e.key === 'i') {
-                    e.preventDefault();
-                    italicBtn.click();
-                }
-                
-                // Ctrl+U para sublinhado
-                if (e.ctrlKey && e.key === 'u') {
-                    e.preventDefault();
-                    underlineBtn.click();
-                }
-                
-                // Ctrl+C para copiar
-                if (e.ctrlKey && e.key === 'c') {
-                    e.preventDefault();
-                    copyBtn.click();
-                }
-                
-                // Ctrl+V para colar
-                if (e.ctrlKey && e.key === 'v') {
-                    e.preventDefault();
-                    pasteBtn.click();
-                }
-                
-                // Ctrl+S para salvar manualmente
-                if (e.ctrlKey && e.key === 's') {
-                    e.preventDefault();
-                    saveContent();
-                    showNotification('Texto salvo!', 'success');
-                }
-                
-                // Ctrl+E para emojis
-                if (e.ctrlKey && e.key === 'e') {
-                    e.preventDefault();
-                    openEmojiModal();
-                }
-            });
-            
-            // Alternar tema claro/escuro
-            themeToggle.addEventListener('click', () => {
-                document.body.classList.toggle('dark-mode');
-                
-                // Salvar preferência no localStorage
-                const isDark = document.body.classList.contains('dark-mode');
-                localStorage.setItem(THEME_KEY, isDark);
-            });
-            
-            // Salvar conteúdo antes de sair da página (se houver mudanças)
-            window.addEventListener('beforeunload', (e) => {
-                if (isContentChanged) {
-                    saveContent();
-                    // Alguns navegadores exigem que o evento seja tratado desta forma
-                    e.preventDefault();
-                    e.returnValue = '';
-                }
-            });
-            
-            // Inicializar
-            loadSavedContent();
-            initEmojis();
-            editableContent.focus();
+            emojiGrid.appendChild(button);
         });
-    </script>
+    };
+    
+    // Inserir texto na posição do cursor
+    const insertAtCursor = (text) => {
+        const selection = window.getSelection();
+        if (selection.rangeCount > 0) {
+            const range = selection.getRangeAt(0);
+            range.deleteContents();
+            range.insertNode(document.createTextNode(text));
+            
+            // Mover o cursor para depois do emoji inserido
+            const newRange = document.createRange();
+            newRange.setStartAfter(range.endContainer);
+            newRange.collapse(true);
+            selection.removeAllRanges();
+            selection.addRange(newRange);
+        } else {
+            editableContent.innerHTML += text;
+        }
+        
+        editableContent.focus();
+        isContentChanged = true;
+        updateSaveStatus(false);
+        updateWordCount();
+    };
+    
+    // Abrir modal de emojis
+    const openEmojiModal = () => {
+        emojiModal.style.display = 'block';
+        emojiOverlay.style.display = 'block';
+    };
+    
+    // Fechar modal de emojis
+    const closeEmojiModal = () => {
+        emojiModal.style.display = 'none';
+        emojiOverlay.style.display = 'none';
+    };
+    
+    // Evento de mudança no conteúdo editável
+    editableContent.addEventListener('input', () => {
+        updateWordCount();
+        isContentChanged = true;
+        updateSaveStatus(false);
+        
+        // Debounce para salvar após 1 segundo sem digitação
+        clearTimeout(saveTimeout);
+        saveTimeout = setTimeout(saveContent, 1000);
+    });
+    
+    // Formatação de texto
+    boldBtn.addEventListener('click', () => {
+        document.execCommand('bold', false, null);
+        boldBtn.classList.toggle('active');
+    });
+    
+    italicBtn.addEventListener('click', () => {
+        document.execCommand('italic', false, null);
+        italicBtn.classList.toggle('active');
+    });
+    
+    underlineBtn.addEventListener('click', () => {
+        document.execCommand('underline', false, null);
+        underlineBtn.classList.toggle('active');
+    });
+    
+    // Alinhamento de texto
+    alignLeftBtn.addEventListener('click', () => {
+        document.execCommand('justifyLeft', false, null);
+        alignLeftBtn.classList.add('active');
+        alignCenterBtn.classList.remove('active');
+        alignRightBtn.classList.remove('active');
+    });
+    
+    alignCenterBtn.addEventListener('click', () => {
+        document.execCommand('justifyCenter', false, null);
+        alignLeftBtn.classList.remove('active');
+        alignCenterBtn.classList.add('active');
+        alignRightBtn.classList.remove('active');
+    });
+    
+    alignRightBtn.addEventListener('click', () => {
+        document.execCommand('justifyRight', false, null);
+        alignLeftBtn.classList.remove('active');
+        alignCenterBtn.classList.remove('active');
+        alignRightBtn.classList.add('active');
+    });
+    
+    // Emojis
+    emojiBtn.addEventListener('click', openEmojiModal);
+    emojiOverlay.addEventListener('click', closeEmojiModal);
+    
+    // Copiar - CORREÇÃO APLICADA
+    copyBtn.addEventListener('click', () => {
+        const selection = window.getSelection();
+        
+        // Verificar se há texto selecionado
+        if (selection.toString().length > 0) {
+            // Copiar apenas o texto selecionado
+            navigator.clipboard.writeText(selection.toString())
+                .then(() => {
+                    showNotification('Texto selecionado copiado!', 'success');
+                })
+                .catch(err => {
+                    // Fallback para método antigo
+                    document.execCommand('copy');
+                    showNotification('Texto selecionado copiado!', 'success');
+                });
+        } else {
+            // Se não há seleção, copiar todo o conteúdo como fallback
+            const range = document.createRange();
+            range.selectNode(editableContent);
+            window.getSelection().removeAllRanges();
+            window.getSelection().addRange(range);
+            
+            try {
+                document.execCommand('copy');
+                showNotification('Todo o texto copiado!', 'success');
+            } catch (err) {
+                showNotification('Erro ao copiar texto', 'warning');
+            }
+            
+            // Limpar seleção
+            window.getSelection().removeAllRanges();
+        }
+    });
+    
+    // Colar - CORREÇÃO APLICADA (sem permissão)
+    pasteBtn.addEventListener('click', () => {
+        // Focar na área editável
+        editableContent.focus();
+        
+        // Usar o método execCommand tradicional que não requer permissões
+        try {
+            document.execCommand('paste');
+            showNotification('Texto colado!', 'success');
+        } catch (err) {
+            // Se o execCommand não funcionar, mostrar mensagem alternativa
+            showNotification('Use Ctrl+V para colar o texto', 'warning');
+        }
+    });
+    
+    // Limpar
+    clearBtn.addEventListener('click', () => {
+        if (editableContent.innerHTML && confirm('Deseja realmente limpar todo o texto?')) {
+            editableContent.innerHTML = '';
+            updateWordCount();
+            saveContent();
+            showNotification('Texto limpo!', 'warning');
+        }
+    });
+    
+    // Atalhos de teclado
+    editableContent.addEventListener('keydown', (e) => {
+        // Ctrl+B para negrito
+        if (e.ctrlKey && e.key === 'b') {
+            e.preventDefault();
+            boldBtn.click();
+        }
+        
+        // Ctrl+I para itálico
+        if (e.ctrlKey && e.key === 'i') {
+            e.preventDefault();
+            italicBtn.click();
+        }
+        
+        // Ctrl+U para sublinhado
+        if (e.ctrlKey && e.key === 'u') {
+            e.preventDefault();
+            underlineBtn.click();
+        }
+        
+        // Ctrl+C para copiar
+        if (e.ctrlKey && e.key === 'c') {
+            e.preventDefault();
+            copyBtn.click();
+        }
+        
+        // Ctrl+V para colar - CORREÇÃO APLICADA
+        if (e.ctrlKey && e.key === 'v') {
+            // Não prevenir o comportamento padrão para permitir o colar nativo
+            // Apenas mostrar notificação após um pequeno delay
+            setTimeout(() => {
+                showNotification('Texto colado!', 'success');
+            }, 100);
+        }
+        
+        // Ctrl+S para salvar manualmente
+        if (e.ctrlKey && e.key === 's') {
+            e.preventDefault();
+            saveContent();
+            showNotification('Texto salvo!', 'success');
+        }
+        
+        // Ctrl+E para emojis
+        if (e.ctrlKey && e.key === 'e') {
+            e.preventDefault();
+            openEmojiModal();
+        }
+    });
+    
+    // Alternar tema claro/escuro
+    themeToggle.addEventListener('click', () => {
+        document.body.classList.toggle('dark-mode');
+        
+        // Salvar preferência no localStorage
+        const isDark = document.body.classList.contains('dark-mode');
+        localStorage.setItem(THEME_KEY, isDark);
+    });
+    
+    // Salvar conteúdo antes de sair da página (se houver mudanças)
+    window.addEventListener('beforeunload', (e) => {
+        if (isContentChanged) {
+            saveContent();
+            // Alguns navegadores exigem que o evento seja tratado desta forma
+            e.preventDefault();
+            e.returnValue = '';
+        }
+    });
+    
+    // Inicializar
+    loadSavedContent();
+    initEmojis();
+    editableContent.focus();
+});
+ </script>
 </body>
 </html>
